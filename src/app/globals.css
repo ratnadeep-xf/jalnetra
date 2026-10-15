@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Tailwind preflight sets img { max-width: 100%; height: auto }, which collapses Leaflet tiles. */
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
