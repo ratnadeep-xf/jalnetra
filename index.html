@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="JalNetra water-quality monitoring for the Sabarmati River and Ahmedabad urban lakes."
+    />
+    <title>JalNetra | Smart Water Monitoring</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <style>
+      :root { font-family: Arial, Helvetica, sans-serif; color: #0f172a; background: #f1f5f9; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      button { font: inherit; cursor: pointer; }
+      .app { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+      .header { z-index: 10; display: flex; align-items: center; gap: 12px; flex: 0 0 auto; padding: 12px 24px; background: white; border-bottom: 1px solid #e2e8f0; box-shadow: 0 1px 3px #0f172a12; }
+      .logo { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: #0284c7; color: white; font-size: 22px; box-shadow: 0 1px 2px #0f172a1a; }
+      .brand { min-width: 0; }
+      .brand h1 { margin: 0; font-size: 18px; line-height: 1.2; letter-spacing: -.02em; }
+      .brand p { margin: 2px 0 0; color: #64748b; font-size: 14px; line-height: 1.3; }
+      .content { min-height: 0; flex: 1; display: flex; position: relative; }
+      .map-wrap { min-width: 0; min-height: 0; flex: 1; position: relative; background: #f1f5f9; }
+      #map { width: 100%; height: 100%; }
+      .legend { position: absolute; z-index: 1000; left: 12px; bottom: 32px; width: min(288px, calc(100% - 24px)); max-height: calc(100% - 80px); overflow: auto; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fffffff2; box-shadow: 0 10px 25px #0f172a1c; }
+      .legend-title { margin: 0 0 8px; color: #64748b; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+      .legend-row { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; color: #475569; font-size: 12px; line-height: 1.35; }
+      .dot { width: 12px; height: 12px; flex: 0 0 auto; margin-top: 2px; border: 1px solid #0f172a26; border-radius: 50%; }
+      .legend-row strong { color: #1e293b; }
+      .legend-note { margin: 8px 0 0; color: #94a3b8; font-size: 11px; line-height: 1.35; }
+      .panel { width: 400px; flex: 0 0 400px; min-height: 0; overflow: auto; background: white; border-left: 1px solid #e2e8f0; box-shadow: -2px 0 5px #0f172a0a; }
+      .empty { height: 100%; display: grid; place-items: center; padding: 24px; color: #64748b; font-size: 14px; text-align: center; }
+      .panel-head { display: flex; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 2; background: white; }
+      .panel-head h2 { margin: 0; font-size: 18px; letter-spacing: -.02em; }
+      .panel-head p { margin: 2px 0 8px; color: #64748b; font-size: 14px; }
+      .pill { display: inline-flex; border-radius: 999px; padding: 3px 8px; font-size: 12px; font-weight: 600; }
+      .river { background: #f0f9ff; color: #075985; }
+      .lake { background: #f1f5f9; color: #334155; }
+      .close { width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: #64748b; font-size: 22px; line-height: 1; }
+      .close:hover { background: #f1f5f9; color: #0f172a; }
+      .panel-body { display: flex; flex-direction: column; gap: 20px; padding: 16px; }
+      .priority { display: inline-flex; border-radius: 999px; padding: 5px 12px; font-size: 14px; font-weight: 700; }
+      .description { margin: 8px 0 0; color: #475569; font-size: 14px; line-height: 1.35; }
+      .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat { padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+      .stat-label { color: #64748b; font-size: 12px; font-weight: 600; }
+      .stat-value { margin-top: 4px; font-size: 18px; font-weight: 700; }
+      .unit { margin-left: 4px; color: #64748b; font-size: 12px; font-weight: 400; }
+      .bad { color: #dc2626; }
+      .trend { float: right; font-size: 12px; font-weight: 600; }
+      .trend.up { color: #dc2626; } .trend.down { color: #16a34a; } .trend.flat { color: #64748b; }
+      .chart-title { margin: 0 0 12px; font-size: 14px; }
+      .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 12px; padding: 4px; border-radius: 8px; background: #f1f5f9; }
+      .metric { border: 0; border-radius: 6px; padding: 5px 2px; background: transparent; color: #64748b; font-size: 12px; font-weight: 600; }
+      .metric.active { background: white; color: #0f172a; box-shadow: 0 1px 3px #0f172a12; }
+      #chart { width: 100%; height: 256px; display: block; overflow: visible; }
+      .footer { padding-top: 12px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px; }
+      .footer small { display: block; margin-top: 4px; color: #94a3b8; }
+      @media (max-width: 767px) {
+        .header { padding: 12px 16px; }
+        .brand p { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .content { display: block; }
+        .map-wrap { height: 100%; }
+        .panel { position: absolute; z-index: 1100; right: 0; bottom: 0; left: 0; width: 100%; height: 60vh; border-top: 1px solid #e2e8f0; border-left: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -12px 32px #0f172a1f; transform: translateY(100%); transition: transform .3s ease; }
+        .panel.open { transform: translateY(0); }
+        .panel:before { content: ""; display: block; width: 40px; height: 6px; margin: 8px auto 0; border-radius: 6px; background: #e2e8f0; }
+        .legend { bottom: 24px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <span class="logo" aria-hidden="true">⌁</span>
+        <div class="brand">
+          <h1>JalNetra</h1>
+          <p>Smart Sabarmati Riverfront &amp; Urban Water Bodies</p>
+        </div>
+      </header>
+      <div class="content">
+        <section class="map-wrap">
+          <div id="map" aria-label="Water monitoring station map"></div>
+          <aside class="legend">
+            <p class="legend-title">Priority class</p>
+            <div id="legend-list"></div>
+            <p class="legend-note">Classes based on CPCB BOD priority thresholds</p>
+          </aside>
+        </section>
+        <aside id="panel" class="panel" aria-live="polite">
+          <div class="empty">Select a station on the map</div>
+        </aside>
+      </div>
+    </main>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script>
+      const stations = [
+        ["kotarpur-intake","Kotarpur Intake","Sabarmati River","river",23.0942,72.6208,"AMC",2.1,7.4,7.6,8],
+        ["subhash-bridge","Subhash Bridge","Sabarmati River","river",23.0698,72.5904,"GPCB",4.8,5.8,7.5,16],
+        ["gandhi-ashram","Gandhi Ashram","Sabarmati River","river",23.0606,72.5806,"CPCB",5.4,5.5,7.7,18],
+        ["gandhi-bridge","Gandhi Bridge","Sabarmati River","river",23.0426,72.5754,"CPCB",7.2,4.7,7.6,25],
+        ["nehru-bridge","Nehru Bridge","Sabarmati River","river",23.0366,72.5732,"GPCB",9.1,4.0,7.4,31],
+        ["ellis-bridge","Ellis Bridge","Sabarmati River","river",23.0262,72.5714,"CPCB",13.5,3.1,7.3,47],
+        ["sardar-bridge","Sardar Bridge","Sabarmati River","river",23.0128,72.5706,"GPCB",17.8,2.5,7.2,62],
+        ["vasna-barrage","Vasna Barrage","Sabarmati River","river",22.9924,72.5618,"CPCB",24.6,1.5,7.1,88],
+        ["narol","Narol","Sabarmati River","river",22.9584,72.5746,"GPCB",37.2,.6,6.9,132],
+        ["vautha","Vautha","Sabarmati River","river",22.7082,72.4526,"CPCB",46.5,.4,6.8,164],
+        ["kankaria","Kankaria Lake","Kankaria Lake","lake",23.0061,72.6018,"AMC",6.5,5.2,8.1,21],
+        ["vastrapur","Vastrapur Lake","Vastrapur Lake","lake",23.0357,72.5291,"AMC",3.9,6.4,7.9,13],
+        ["chandola","Chandola Lake","Chandola Lake","lake",22.9872,72.5904,"GPCB",19.4,1.8,7.2,71],
+        ["thol","Thol Lake","Thol Lake","lake",23.1388,72.3942,"GPCB",1.6,7.9,7.8,6],
+        ["bopal","Bopal Lake","Bopal Lake","lake",23.0294,72.4696,"AMC",22.3,2.1,7.5,76],
+        ["sola","Sola Lake","Sola Lake","lake",23.0734,72.5168,"AMC",11.6,3.5,7.6,39]
+      ].map((s) => ({id:s[0],name:s[1],waterBody:s[2],type:s[3],lat:s[4],lng:s[5],source:s[6],bod:s[7],do:s[8],ph:s[9],cod:s[10],date:"2026-10-01T00:00:00.000Z"}));
+      const classes = {
+        I:["Priority I","#7f1d1d","BOD above 30 mg/L. Critically polluted."],
+        II:["Priority II","#dc2626","BOD 20–30 mg/L. Severely polluted."],
+        III:["Priority III","#f97316","BOD 10–20 mg/L. Heavily polluted."],
+        IV:["Priority IV","#eab308","BOD 6–10 mg/L. Moderately polluted."],
+        V:["Priority V","#84cc16","BOD 3–6 mg/L. Slightly polluted."],
+        Compliant:["Compliant","#16a34a","BOD at or below 3 mg/L. Meets the use threshold."]
+      };
+      const classOrder = ["I","II","III","IV","V","Compliant"];
+      const metrics = {bod:["BOD","mg/L"],do:["DO","mg/L"],ph:["pH",""],cod:["COD","mg/L"]};
+      const selected = { station:null, metric:"bod" };
+      function classify(bod) { return bod > 30 ? "I" : bod >= 20 ? "II" : bod >= 10 ? "III" : bod >= 6 ? "IV" : bod > 3 ? "V" : "Compliant"; }
+      function textOn(hex) { const n = parseInt(hex.slice(1),16), lum = (.299*((n>>16)&255)+.587*((n>>8)&255)+.114*(n&255))/255; return lum > .6 ? "#0f172a" : "#fff"; }
+      function hash(value) { let h=2166136261; for (let i=0;i<value.length;i++) { h ^= value.charCodeAt(i); h = Math.imul(h,16777619); } return h>>>0; }
+      function readings(station) {
+        let state=hash(station.id), rand=()=>{ state=(state+0x6d2b79f5)|0; let m=Math.imul(state^(state>>>15),1|state); m=(m+Math.imul(m^(m>>>7),61|m))^m; return ((m^(m>>>14))>>>0)/4294967296; };
+        const out=[], latest=Date.parse(station.date);
+        for(let i=0;i<12;i++) { const date=new Date(latest + (i-11)*2629800000).toISOString(), age=(11-i)/11; if(i===11){out.push({date,bod:station.bod,do:station.do,ph:station.ph,cod:station.cod});continue;} const bod=Math.max(.2,Math.min(80,+(station.bod+(rand()<.5?-1:1)*age*station.bod*.18+(rand()-.5)*Math.max(.4,station.bod*.08)).toFixed(1))); out.push({date,bod,do:Math.max(.1,+(station.do-age*.8+(rand()-.5)*.3).toFixed(1)),ph:Math.max(6.4,+(station.ph+(rand()-.5)*.2*(.4+age)).toFixed(1)),cod:Math.max(1,+(bod*(station.cod/Math.max(station.bod,.4))*(1+(rand()-.5)*.08)).toFixed(1))}); }
+        return out;
+      }
+      const legend = document.getElementById("legend-list");
+      classOrder.forEach((key) => { const [label,color,description]=classes[key]; legend.insertAdjacentHTML("beforeend",`<div class="legend-row"><span class="dot" style="background:${color}"></span><span><strong>${label}.</strong> ${description}</span></div>`); });
+      const map = L.map("map").setView([23.03,72.58],12);
+      L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, OpenStreetMap contributors'}).addTo(map);
+      const markers = new Map();
+      stations.forEach((station) => { const key=classify(station.bod), color=classes[key][1]; const marker=L.circleMarker([station.lat,station.lng],{radius:station.type==="lake"?14:10,color:station.type==="lake"?"#0f172a":"#fff",weight:station.type==="lake"?3:2,fillColor:color,fillOpacity:.95}).addTo(map).bindTooltip(`${station.name}<br>BOD ${station.bod} mg/L`); marker.on("click",()=>showStation(station)); markers.set(station.id,marker); });
+      function fmtDate(iso) { return new Intl.DateTimeFormat("en-IN",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}).format(new Date(iso)); }
+      function fmtMonth(iso) { return new Intl.DateTimeFormat("en-IN",{month:"short",year:"2-digit",timeZone:"UTC"}).format(new Date(iso)); }
+      function showStation(station) { selected.station=station; const panel=document.getElementById("panel"); panel.classList.add("open"); const key=classify(station.bod), meta=classes[key], series=readings(station); const previous=series.slice(-4,-1).reduce((sum,r)=>sum+r.bod,0)/3, change=Math.round(((station.bod-previous)/previous)*100), trend=change>0?`↑ +${change}%`:change<0?`↓ ${change}%`:"→ 0%"; panel.innerHTML=`<header class="panel-head"><div><h2>${station.name}</h2><p>${station.waterBody}</p><span class="pill ${station.type}">${station.type==="lake"?"Lake":"River"}</span></div><button class="close" aria-label="Close">&times;</button></header><div class="panel-body"><div><span class="priority" style="background:${meta[1]};color:${textOn(meta[1])}">${meta[0]}</span><p class="description">${key==="Compliant"?"Within CPCB limit (BOD &le; 3 mg/L)":meta[2]}</p></div><div class="stats"><div class="stat"><div class="stat-label">BOD <span class="trend ${change>0?"up":change<0?"down":"flat"}">${trend}</span></div><div class="stat-value ${station.bod>3?"bad":""}">${station.bod.toFixed(1)}<span class="unit">mg/L</span></div></div><div class="stat"><div class="stat-label">DO</div><div class="stat-value ${station.do<4?"bad":""}">${station.do.toFixed(1)}<span class="unit">mg/L</span></div></div><div class="stat"><div class="stat-label">pH</div><div class="stat-value">${station.ph.toFixed(1)}</div></div><div class="stat"><div class="stat-label">COD</div><div class="stat-value">${station.cod.toFixed(1)}<span class="unit">mg/L</span></div></div></div><section><h3 class="chart-title">Monthly trend</h3><div class="metrics">${Object.keys(metrics).map(k=>`<button class="metric ${k==="bod"?"active":""}" data-metric="${k}">${metrics[k][0]}</button>`).join("")}</div><svg id="chart" viewBox="0 0 360 256" role="img" aria-label="Monthly water quality trend"></svg></section><footer class="footer">Source: ${station.source} - Last updated ${fmtDate(station.date)}<small>Mock data</small></footer></div>`; panel.querySelector(".close").onclick=closePanel; panel.querySelectorAll(".metric").forEach(b=>b.onclick=()=>{selected.metric=b.dataset.metric; panel.querySelectorAll(".metric").forEach(x=>x.classList.toggle("active",x===b)); drawChart(series,selected.metric);}); drawChart(series,"bod"); map.flyTo([station.lat,station.lng],Math.max(map.getZoom(),13),{duration:.8}); }
+      function closePanel() { selected.station=null; document.getElementById("panel").classList.remove("open"); map.flyTo([23.03,72.58],12,{duration:.8}); markers.forEach((marker, id)=>{ const station=stations.find(s=>s.id===id), lake=station.type==="lake"; marker.setStyle({radius:lake?14:10,color:lake?"#0f172a":"#fff",weight:lake?3:2}); }); }
+      function drawChart(series,metric) { const svg=document.getElementById("chart"), width=360,height=256,pad={l:42,r:8,t:18,b:30}, values=series.map(r=>r[metric]), ref=metric==="bod"?3:metric==="do"?4:null, all=ref===null?values:values.concat(ref), min=Math.max(0,Math.min(...all)-Math.max((Math.max(...all)-Math.min(...all))*.12,.4)), max=Math.max(...all)+Math.max((Math.max(...all)-Math.min(...all))*.12,.4), x=i=>pad.l+i*(width-pad.l-pad.r)/(values.length-1), y=v=>height-pad.b-(v-min)*(height-pad.t-pad.b)/(max-min), line=values.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+","+y(v).toFixed(1)).join(" "); let html=""; for(let i=0;i<5;i++){const yy=pad.t+i*(height-pad.t-pad.b)/4, val=max-(max-min)*i/4; html+=`<line x1="${pad.l}" x2="${width-pad.r}" y1="${yy}" y2="${yy}" stroke="#e2e8f0"/><text x="${pad.l-7}" y="${yy+4}" text-anchor="end" fill="#64748b" font-size="10">${val.toFixed(1)}</text>`;} if(ref!==null) html+=`<line x1="${pad.l}" x2="${width-pad.r}" y1="${y(ref)}" y2="${y(ref)}" stroke="#dc2626" stroke-dasharray="4 4"/><text x="${width-pad.r}" y="${y(ref)-5}" text-anchor="end" fill="#dc2626" font-size="10">${metric==="bod"?"CPCB limit":"Min. DO"}</text>`; html+=`<path d="${line}" fill="none" stroke="#0284c7" stroke-width="2"/>`; values.forEach((v,i)=>{html+=`<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="#0284c7"/><text x="${x(i)}" y="${height-8}" text-anchor="middle" fill="#64748b" font-size="10">${i%2===0?fmtMonth(series[i].date):""}</text>`;}); svg.innerHTML=html; }
+    </script>
+  </body>
+</html>
